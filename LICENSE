@@ -1,6 +1,8 @@
 MIT License
 
-Copyright (c) 2026 jimfitchusa
+Copyright (c) 1991 Neil J. Rubenking (Original Turbo Pascal HUGECALC)
+Copyright (c) 1991-2000 Jim Fitch (C Port Adaptation)
+Copyright (c) 2025-2026 Jim Fitch (Python Modernization & Continuous Math Expansion)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
