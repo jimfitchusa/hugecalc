@@ -126,19 +126,20 @@ class TestHugeCalc(unittest.TestCase):
         self.assertIn("Tangent asymptote", err)
 
     def test_Complex_Root_Trap(self):
-        out, err, code = self.run_calc("-8", "^^", "1/2")
-        self.assertNotEqual(code, 0)
-        self.assertIn("complex root", err)
+        cmd = "python hugecalc.py -8 ^^ 1/2 | python hugecalc.py round 25"
+        out, err, code = self.run_pipe(cmd)
+        self.assertEqual(code, 0)
+        self.assertIn("2.828427124746190097603377i", out)
 
     def test_Complex_Root_Trap_new(self):
         out, err, code = self.run_calc("-8", "^", "1/2")
-        self.assertNotEqual(code, 0)
-        self.assertIn("complex root", err)
+        self.assertEqual(code, 0)
+        self.assertEqual("-0.0000000000000000000000000000123720676440730406949730772695+2.82842712474619009760337744845i", out)
 
     def test_Logarithm_Domain(self):
         out, err, code = self.run_calc("ln", "-5")
-        self.assertNotEqual(code, 0)
-        self.assertIn("Logarithm is only defined", err)
+        self.assertEqual(code, 0)
+        self.assertEqual("1.60943791243410037460075933322+3.14159265358979323846264338328i", out)
 
     def test_chained_power_pipe(self):
         cmd = 'python hugecalc.py 19 ^^^^ 3/2 | python hugecalc.py ^^^^ 2 | python hugecalc.py ^^^^ 1/3 | python hugecalc.py round 2'
