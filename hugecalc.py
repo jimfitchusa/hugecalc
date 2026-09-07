@@ -36,6 +36,7 @@ __copyright__ = "Copyright (c) 1991 N. Rubenking, 1991-2000 J. Fitch, 2025-2026 
 
 import sys
 import os
+import re
 
 # ... HELPMESSAGE and VALID_OPERATORS ...
 
@@ -2820,10 +2821,28 @@ def calculate(op1: str, op: str, op2: str) -> tuple[str, str, str | None]:
         hf1 = str_to_hf(op1)
         target_tol = int(op2)
 
-        # Passing the evaluated string back into a new HugeFloat
-        # instantly forces _normalize to round it to target_tol!
-        rounded_hf = HugeFloat(str(hf1), target_tol)
-        return op, str(rounded_hf), None
+        def snap_and_round(hf_obj: HugeFloat, tol: int) -> HugeFloat:
+            # 1. Machine Epsilon Zero-Snap (scrub computational dust)
+            sci_scale = hf_obj.exponent + len(hf_obj.mantissa) - 1
+            if sci_scale < -tol and hf_obj.mantissa != '0':
+                return HugeFloat('0', tol)
+
+            # 2. Force mantissa truncation (sig fig rounding)
+            if len(hf_obj.mantissa) > tol:
+                chop = len(hf_obj.mantissa) - tol
+                hf_obj.mantissa = _huge_round(hf_obj.mantissa, chop)
+                hf_obj.exponent += chop
+            return hf_obj
+
+        if isinstance(hf1, HugeComplex):
+            real_hf = snap_and_round(HugeFloat(str(hf1.real), target_tol), target_tol)
+            imag_hf = snap_and_round(HugeFloat(str(hf1.imag), target_tol), target_tol)
+
+            rounded_hc = HugeComplex(real_hf, imag_hf, target_tol)
+            return op, str(rounded_hc), None
+        else:
+            rounded_hf = snap_and_round(HugeFloat(str(hf1), target_tol), target_tol)
+            return op, str(rounded_hf), None
 
     elif op == 'polar':
         hf1 = str_to_hf(op1)
