@@ -1,0 +1,53 @@
+addition_basic, 			123 + 456, 			579, 0
+subtraction_negative, 		10 - 50, 			-40, 0
+machine_epsilon_bypass, 	5e50 + 1e-10, 		5e50, 0
+exact_trig_roots, 			cosd 90, 			0, 0
+sqrt_2, 					2 ^^ 1/2, 			1.414213562373095048801689, 0
+sqrt_2a, 					2 ^ 1/2, 			1.414213562373095048801689, 0
+10_power_0p511, 			10 ^^ 0.511, 		3.243396173493492447843998, 0
+10_power_0p511a, 			10 ^ 0.511, 		3.243396173493492447843998, 0
+Rational_Binary_Math, 		3/4 + 1/4, 			1, 0
+Rational_Exponents, 		16 ^^ 1/2, 			4, 0
+Rational_Exponentsa, 		16 ^ 1/2, 			4, 0
+Pi_Interception, 			sin pi,             0, 0
+Trig_Roots_Degrees, 		sind 180,           0, 0
+Dynamic_HCTOL_Protection, 	1000 * 1000,        "1,000,000", 0, HCTOL 2
+Complex_Factorial, 			1+1i !, 			0.65297+0.34307i, 0, HCTOL 5
+complex_root_1, 		    python hugecalc.py -8 ^^ 1/2 | python hugecalc.py round 25, 2.828427124746190097603377i, 0
+complex_root_2, 		    -8 ^ 1/2, 			2.828427124746190097603377i, 0
+divide_by_zero, 		    10 / 0, 				Division by zero, 1
+tangent_asymptote, 		    tand 90, 				Tangent asymptote, 1
+Logarithm_Domain, 		    ln -5, 					1.609437912434100374600759+3.141592653589793238462643i, 0
+Logarithm_Domaina, 		    ln 0, 				Logarithm is only defined for positive numbers, 1
+chained_power_pipe, 	    python hugecalc.py 19 ^^^^ 3/2 | python hugecalc.py ^^^^ 2 | python hugecalc.py ^^^^ 1/3 | python hugecalc.py round 2, 	19e0, 0
+chained_power_pipea, 	    python hugecalc.py 19 ^^ 3/2 | python hugecalc.py ^^ 2 | python hugecalc.py ^^ 1/3 | python hugecalc.py round 2, 19e0, 0
+Complex_Multiply, 		    2.5+1.5i * 1.2-3.4i, 	8.1-6.7i, 0
+Cmplex_Sine, 			    sin 2+1i, 				1.403119250622040588019491-0.4890562590412936735864546i, 0
+Inverse_Cosine, 		    acos 5+2i, 				0.3865646425198747179443653-2.370548537317919720320337i, 0
+legacy_divsion, 		    10 // 3, 	        QUOTIENT: 3 && REMAINDER: 1, 0
+modulo_divsion, 		    71 % 27, 	        REMAINDER: 17, 0
+modulo_divsiona, 		    71 mod 27, 	        REMAINDER: 17, 0
+hyp_sin, 	        		sinh pi/2,          2.30129890230729487346304, 0
+hyp_cos, 	        		cosh 4.578,         48.66491787204328533534201, 0
+hyp_tan, 	        		tanh 22.7,          0.9999999999999999999616239, 0
+arc_hyp_sin, 	        	asinh pi/2,         1.233403117511217057073108, 0
+arc_hyp_cos, 	        	acosh 4.578,        2.202261553307189072328421, 0
+arc_hyp_tan, 	        	atanh 22.7,         0.04408139379733581726683686+1.570796326794896619231322i, 0
+roots, 	        	        2 roots 3,          ROOTS: 1.259921049894873164767211 && -0.6299605249474365823836053+1.091123635971721403560073i && -0.6299605249474365823836053-1.091123635971721403560073i, 0
+polar, 	        		    polar 1+2i,         POLAR: 2.236067977499789696409174 * e^(1.107148717794090503017065i), 0
+rect, 	        		    2.236067977499789696409174 rect 1.107148717794090503017065, RECT: 1.000000000000000000000001+2i, 0
+factorial_domain, 		    -5 !, 				Factorial is undefined for negative integers, 1
+factorial_domaina, 		    -5.1 !, 			-0.36397, 0, HCTOL 5
+negative_power_domain, 		5 ^ -2, 			0.04, 0
+negative_complex_power, 	5 ^ -i, 			-0.03863196993393542627161533-0.9992535068234804595112378i, 0
+negative_complex_powera, 	5 ^^ -i, 			-0.03863196993393542627161533-0.9992535068234804595112378i, 0
+arcsine_degree_domain, 		asind 2, 			Domain error: arcsine is only defined for -1 <= x <= 1, 1
+arccos_degree_domain, 		acosd 2, 			Domain error: arccosine is only defined for -1 <= x <= 1, 1
+Absolute_Zero_Culling,      python hugecalc.py 1e-30 + 0 | python hugecalc.py round 25, 0, 0         
+sci_threshold_trigger, 1 * 1e15, 1e15, 0
+sci_threshold_bypass, 1 * 1e14, "100,000,000,000,000", 0
+factorial_zero, 0 !, 1, 0
+factorial_one, 1 !, 1, 0
+zero_base_power, 0 ^ 5, 0, 0
+modulo_domain_rejection, 5e-1 % 2, Integer division requires integers, 1
+zero_power_zero, 0 ^ 0, 1, 0
