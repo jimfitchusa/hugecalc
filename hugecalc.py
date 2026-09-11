@@ -109,6 +109,7 @@ ENVIRONMENT:
   HCTOL=25       (Sets internal significant figure precision)
   HCFORMAT=DEC   (Sets output formatting to 'DEC' or 'SCI')
   HCIMAG=i       (Sets the imaginary unit symbol to 'i' or 'j')
+  HC_FORCE_TTY=1   (Forces human-readable labels during piped/redirected execution)
 """
 
 def usage():
@@ -357,28 +358,32 @@ class HugeFloat:
 
     def __pow__(self, other: 'HugeFloat', force_negative: bool = False) -> 'HugeFloat':
         """Overloads the ** (power) operator."""
-        if other.sign == '-':
-            raise ValueError("Power is not setup for negative exponents.")
+        # 1. Flag and isolate a negative exponent
+        is_negative_exp = other.sign == '-'
 
-        # 1. Format the exponent into integer and fractional string parts
-        if other.exponent >= 0:
-            exp_int_part = other.mantissa + ('0' * other.exponent)
+        # We use a positive copy of the exponent for the core calculations
+        active_exp = HugeFloat(str(other), self.sig_figs)
+        active_exp.sign = '+'
+
+        # 2. Format the exponent into integer and fractional string parts
+        if active_exp.exponent >= 0:
+            exp_int_part = active_exp.mantissa + ('0' * active_exp.exponent)
             exp_frac_part = '0'
         else:
-            padded = other.mantissa.zfill(abs(other.exponent) + 1)
-            split_idx = len(padded) + other.exponent
+            padded = active_exp.mantissa.zfill(abs(active_exp.exponent) + 1)
+            split_idx = len(padded) + active_exp.exponent
             exp_int_part = padded[:split_idx].lstrip('0') or '0'
             exp_frac_part = padded[split_idx:].rstrip('0') or '0'
 
-        # 2. Format the base
+        # 3. Format the base
         base_mag = self.mantissa + ('0' * self.exponent) if self.exponent > 0 else self.mantissa
         base_decimals = abs(self.exponent) if self.exponent < 0 else 0
 
-        # 3. Calculate Integer Power
+        # 4. Calculate Integer Power
         int_result = huge_power(base_mag, exp_int_part)
         int_dec_places = base_decimals * int(exp_int_part)
 
-        # 4. Calculate Fractional Power
+        # 5. Calculate Fractional Power
         if exp_frac_part == '0':
             final_mantissa, final_decimals = int_result, int_dec_places
         else:
@@ -387,7 +392,7 @@ class HugeFloat:
             final_mantissa = huge_prod(int_result, frac_result)
             final_decimals = int_dec_places + frac_dec_places
 
-        # 5. Determine Final Sign
+        # 6. Determine Final Sign
         new_sign = '+'
         if self.sign == '-':
             if force_negative:
@@ -397,7 +402,15 @@ class HugeFloat:
                 if last_digit % 2 != 0:
                     new_sign = '-'
 
-        return HugeFloat(f"{new_sign}{final_mantissa}e{-final_decimals}", self.sig_figs)
+        # 7. Package the positive power result
+        raw_result = HugeFloat(f"{new_sign}{final_mantissa}e{-final_decimals}", self.sig_figs)
+
+        # 8. Apply the reciprocal for negative exponents
+        if is_negative_exp:
+            one = HugeFloat('1', self.sig_figs)
+            return one / raw_result
+
+        return raw_result
 
     def __str__(self) -> str:
         """Overloads the string representation for clean printing."""
@@ -533,11 +546,15 @@ class HugeComplex:
         else:
             exp_hc = exponent_hf
 
-        # 2. Check for pure non-negative integer shortcut
-        is_pure_int = exp_hc.imag.mantissa == '0' and exp_hc.real.exponent >= 0 and exp_hc.real.sign == '+'
+        # 2. Check for pure integer shortcut (Positive OR Negative)
+        is_pure_int = exp_hc.imag.mantissa == '0' and exp_hc.real.exponent >= 0
 
         if is_pure_int:
+            # Extract the raw integer and check if we need to take the reciprocal later
             exp_int = int(exp_hc.real.to_dec_string())
+            is_negative = exp_hc.real.sign == '-'
+            exp_int = abs(exp_int)
+
             result = HugeComplex('1', '0', self.sig_figs)
             base = self
             while exp_int > 0:
@@ -545,6 +562,12 @@ class HugeComplex:
                     result = result * base
                 base = base * base
                 exp_int //= 2
+
+            # Intercept negative exponents with the reciprocal
+            if is_negative:
+                one_hc = HugeComplex('1', '0', self.sig_figs)
+                return one_hc / result
+
             return result
 
         # 3. Continuous Complex Power Fallback: z^w = e^(w * ln(z))
@@ -1320,18 +1343,41 @@ def _huge_gamma(z_hf: HugeFloat, guard_tol: int) -> HugeFloat:
     Evaluates the Spouge approximation for z! which mathematically maps to Gamma(z + 1).
     Formula: (z+a)^(z+0.5) * e^-(z+a) * [c_0 + sum(c_k / (z + k))]
     """
+    # --- TRAFFIC COP: EULER'S REFLECTION FORMULA FOR NEGATIVE INPUTS ---
+    if z_hf.sign == '-':
+        one = HugeFloat('1', guard_tol)
+        frac = z_hf % one
+
+        # Condition 2: Exact negative integer trap
+        if frac.mantissa == '0':
+            raise ValueError("Factorial is undefined for negative integers.")
+
+        # Condition 3: Negative fractional calculation
+        # We want z_hf! which is Gamma(z_hf + 1). Let z_gamma = z_hf + 1
+        z_gamma = z_hf + one
+
+        # We need Gamma(1 - z_gamma) = Gamma(-z_hf).
+        # _huge_gamma(arg) calculates Gamma(arg + 1), so arg + 1 = -z_hf => arg = -z_hf - 1
+        neg_z_hf = HugeFloat(str(z_hf), guard_tol)
+        neg_z_hf.sign = '+'
+        arg_hf = neg_z_hf - one
+
+        gamma_1_minus_z = _huge_gamma(arg_hf, guard_tol)
+
+        # Calculate sin(pi * z_gamma)
+        pi_hf = HugeFloat(_huge_pi(guard_tol), guard_tol)
+        pi_z = pi_hf * z_gamma
+        sin_pi_z = _huge_sin(pi_z.wrap_to_pi(), guard_tol)
+
+        # result = pi / (sin(pi * z_gamma) * Gamma(1 - z_gamma))
+        denom = sin_pi_z * gamma_1_minus_z
+        return pi_hf / denom
+    # -------------------------------------------------------------------
+
     # Spouge guarantees sufficient precision when a ~ 1.25 * decimal_digits
     a_val = int(2.5 * guard_tol) + 2
 
     # --- DYNAMIC PRECISION INFLATION ---
-    # The integer magnitude of Spouge coefficients grows with 'a', cannibalizing fractional digits.
-    # We temporarily inflate the working tolerance to protect the fractional tail.
-    # --- DYNAMIC PRECISION INFLATION ---
-    # Add 20 extra digits to act as an ablative shield against the accumulated
-    # truncation dust of ~15,000 nested Maclaurin and Newton root iterations.
-    # --- DYNAMIC PRECISION INFLATION ---
-    # The integer magnitude of Spouge coefficients grows with 'a', cannibalizing fractional digits.
-    # We add a dynamically scaling 50% buffer to absorb the truncation dust of nested Maclaurin loops.
     gamma_tol = guard_tol + a_val + int(guard_tol * 0.5)
 
     coeffs = _huge_spouge_coefficients(a_val, gamma_tol)
@@ -1374,13 +1420,36 @@ def _huge_complex_gamma(z_hc: HugeComplex, guard_tol: int) -> HugeComplex:
     Evaluates the Spouge approximation for z! in the complex plane.
     Formula: (z+a)^(z+0.5) * e^-(z+a) * [c_0 + sum(c_k / (z + k))]
     """
+    # --- TRAFFIC COP: EULER'S REFLECTION FORMULA FOR NEGATIVE REALS ---
+    if z_hc.real.sign == '-':
+        one_hc = HugeComplex('1', '0', guard_tol)
+        one_hf = HugeFloat('1', guard_tol)
+
+        # Check for pure real exact negative integer
+        frac_real = z_hc.real % one_hf
+        if frac_real.mantissa == '0' and z_hc.imag.mantissa == '0':
+            raise ValueError("Factorial is undefined for negative integers.")
+
+        z_gamma = z_hc + one_hc
+
+        neg_z_hc = HugeComplex('0', '0', guard_tol) - z_hc
+        arg_hc = neg_z_hc - one_hc
+
+        gamma_1_minus_z = _huge_complex_gamma(arg_hc, guard_tol)
+
+        pi_hf = HugeFloat(_huge_pi(guard_tol), guard_tol)
+        pi_hc = HugeComplex(pi_hf, '0', guard_tol)
+
+        pi_z = pi_hc * z_gamma
+        sin_pi_z = _huge_complex_sin(pi_z, guard_tol)
+
+        denom = sin_pi_z * gamma_1_minus_z
+        return pi_hc / denom
+    # -------------------------------------------------------------------
+
     a_val = int(2.5 * guard_tol) + 2
+
     # --- DYNAMIC PRECISION INFLATION ---
-    # Add 20 extra digits to act as an ablative shield against the accumulated
-    # truncation dust of ~15,000 nested Maclaurin and Newton root iterations.
-    # --- DYNAMIC PRECISION INFLATION ---
-    # The integer magnitude of Spouge coefficients grows with 'a', cannibalizing fractional digits.
-    # We add a dynamically scaling 50% buffer to absorb the truncation dust of nested Maclaurin loops.
     gamma_tol = guard_tol + a_val + int(guard_tol * 0.5)
 
     coeffs = _huge_spouge_coefficients(a_val, gamma_tol)
@@ -2025,10 +2094,10 @@ def huge_power(base: str, exponent: str) -> str:
     Calculates base raised to the exponent using halving and squaring.
     Assumes base and exponent are non-negative integer magnitudes.
     """
-    if base == '0':
-        return '0'
     if exponent == '0':
         return '1'
+    if base == '0':
+        return '0'
 
     t1 = base
     t2 = exponent
@@ -2317,6 +2386,8 @@ def calculate(op1: str, op: str, op2: str) -> tuple[str, str, str | None]:
 
         # 4. Zero Base Shortcut
         if hf1.mantissa == '0':
+            if hf2.mantissa == '0':
+                return op, '1e0', None
             return op, '0e0', None
 
         # 5. Hybrid Splitting Optimization: b^a = b^int * e^(frac * ln(b))
@@ -2884,7 +2955,7 @@ if __name__ == "__main__":
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    if sys.stdout.isatty():
+    if sys.stdout.isatty() or os.environ.get('HC_FORCE_TTY') == '1':
     # --- 1. DATA FORMATTING ---
         if original_op == 'roots':
             raw_roots = raw_result.split(';')
