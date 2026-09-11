@@ -220,3 +220,5 @@ __marimo__/
 # C Compiled Binaries
 *.exe
 *.obj
+
+test_hugecalc.py
