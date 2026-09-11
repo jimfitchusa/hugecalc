@@ -2944,14 +2944,16 @@ def calculate(op1: str, op: str, op2: str) -> tuple[str, str, str | None]:
 
 
 if __name__ == "__main__":
+    import time
+    bench_start = time.perf_counter()
+
     # Get the validated operands and operation
     op1, op, op2 = parse_and_validate()
-
+    
     try:
         # Route the operation based on signs
         original_op, raw_result, raw_remainder = calculate(op1, op, op2)
     except (ZeroDivisionError, ValueError) as e:
-        # CHANGED: Print error to stderr
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -3161,3 +3163,9 @@ if __name__ == "__main__":
     else:
         # Piped Mode: Break out multi-roots into actual shell line returns
         print(raw_result.replace(';', '\n'))
+
+    # --- BENCHMARK LOGGING ---
+    if os.environ.get('HC_BENCHMARK') == '1':
+        bench_time = (time.perf_counter() - bench_start) * 1000
+        with open("hc_benchmark.log", "a", encoding="utf-8") as f:
+            f.write(f"{original_op},{bench_time:.3f}\n")

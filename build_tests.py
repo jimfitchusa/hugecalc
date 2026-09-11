@@ -11,7 +11,8 @@ import sys
 CALC_SCRIPT = "hugecalc.py"
 DEFAULT_ENV = {
     "HCTOL": "25",
-    "HCFORMAT": "DEC"
+    "HCFORMAT": "DEC",
+    "HC_BENCHMARK": "1"
 }
 
 class TestHugeCalc(unittest.TestCase):
@@ -34,12 +35,12 @@ class TestHugeCalc(unittest.TestCase):
         env.update(DEFAULT_ENV)
         if env_vars:
             env.update(env_vars)
-            
+
         # Cross-platform shell sanitation for the legacy power operator
         if os.name != 'nt':
             # Demote Windows CMD escaped carets back to literal strings for Bash/Zsh
             command_string = command_string.replace('^^^^', '^^').replace(' ^^ ', ' ^ ')
-            
+
         result = subprocess.run(command_string, capture_output=True, text=True, shell=True, env=env)
         return result.stdout.strip(), result.stderr.strip(), result.returncode
 
