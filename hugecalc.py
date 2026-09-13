@@ -250,13 +250,18 @@ class HugeFloat:
 
     def __add__(self, other: 'HugeFloat') -> 'HugeFloat':
         """Overloads the + operator."""
+        # 0. Exact Zero Shortcuts
+        if self.mantissa == '0': return HugeFloat(str(other), self.sig_figs)
+        if other.mantissa == '0': return HugeFloat(str(self), self.sig_figs)
+
         # 1. Machine Epsilon Shortcut: Skip math if scale difference exceeds precision
-        exp_diff = self.exponent - other.exponent
-        if abs(exp_diff) > self.sig_figs + 1:
-            if self.exponent > other.exponent:
-                return HugeFloat(f"{self.sign}{self.mantissa}e{self.exponent}", self.sig_figs)
+        self_scale = self.exponent + len(self.mantissa) - 1
+        other_scale = other.exponent + len(other.mantissa) - 1
+        if abs(self_scale - other_scale) > self.sig_figs + 1:
+            if self_scale > other_scale:
+                return HugeFloat(str(self), self.sig_figs)
             else:
-                return HugeFloat(f"{other.sign}{other.mantissa}e{other.exponent}", self.sig_figs)
+                return HugeFloat(str(other), self.sig_figs)
 
         # 2. Align Exponents (Pad the larger number's mantissa with zeros)
         target_exponent = min(self.exponent, other.exponent)
@@ -290,14 +295,20 @@ class HugeFloat:
     def __sub__(self, other: 'HugeFloat') -> 'HugeFloat':
         """Overloads the - operator. (Addition with the right operand's sign flipped)"""
         effective_other_sign = '+' if other.sign == '-' else '-'
+        effective_other_str = f"{effective_other_sign}{other.mantissa}e{other.exponent}"
+
+        # 0. Exact Zero Shortcuts
+        if self.mantissa == '0': return HugeFloat(effective_other_str, self.sig_figs)
+        if other.mantissa == '0': return HugeFloat(str(self), self.sig_figs)
 
         # 1. Machine Epsilon Shortcut
-        exp_diff = self.exponent - other.exponent
-        if abs(exp_diff) > self.sig_figs + 1:
-            if self.exponent > other.exponent:
-                return HugeFloat(f"{self.sign}{self.mantissa}e{self.exponent}", self.sig_figs)
+        self_scale = self.exponent + len(self.mantissa) - 1
+        other_scale = other.exponent + len(other.mantissa) - 1
+        if abs(self_scale - other_scale) > self.sig_figs + 1:
+            if self_scale > other_scale:
+                return HugeFloat(str(self), self.sig_figs)
             else:
-                return HugeFloat(f"{effective_other_sign}{other.mantissa}e{other.exponent}", self.sig_figs)
+                return HugeFloat(effective_other_str, self.sig_figs)
 
         # 2. Align Exponents
         target_exponent = min(self.exponent, other.exponent)
@@ -2949,7 +2960,7 @@ if __name__ == "__main__":
 
     # Get the validated operands and operation
     op1, op, op2 = parse_and_validate()
-    
+
     try:
         # Route the operation based on signs
         original_op, raw_result, raw_remainder = calculate(op1, op, op2)
