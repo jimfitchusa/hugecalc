@@ -3,6 +3,8 @@ import os
 import re
 from collections import defaultdict
 import math
+import argparse
+import sys
 
 def parse_polynomial(eq_str):
     eq_str = eq_str.replace(" ", "")
@@ -374,56 +376,48 @@ def newton_solve(equation_template, deriv_template, target, guess_str, hctol):
     return format_dec(current_rounded)
 
 
+def main():
+    parser = argparse.ArgumentParser(description="HugeCalc Equation Solver (hcsolver)")
+    parser.add_argument("equation", type=str, help="The equation string (e.g., 'x^2 - x - 6 = 0')")
+    parser.add_argument("--tol", type=int, default=int(os.environ.get('HCTOL', 25)),
+                        help="Target decimal precision (defaults to HCTOL env var or 25)")
+
+    args = parser.parse_args()
+    eq_input = args.equation.lower()
+
+    print(f"\n--- HugeCalc Solver ---")
+    print(f"Input: {args.equation}")
+    print(f"Precision Target: {args.tol} digits\n")
+
+    # 1. Transcendental Routing Trap
+    # If the equation contains trig or log functions, it requires Newton/Bisection
+    transcendental_sigs = ['sin', 'cos', 'tan', 'ln', 'log']
+    if any(sig in eq_input for sig in transcendental_sigs):
+        print("Error: Transcendental routing (Newton/Bisection) via CLI is not yet implemented.")
+        print("Please input a polynomial equation.")
+        sys.exit(1)
+
+    # 2. Polynomial Routing
+    try:
+        merged_dict, var_name = parse_polynomial(args.equation)
+        dense_arr = build_dense_array(merged_dict)
+
+        if not dense_arr:
+            print("Error: Equation simplified to zero or is invalid.")
+            sys.exit(1)
+
+        eq_template = build_equation_template(dense_arr)
+        guesses = generate_dk_guesses(dense_arr)
+
+        final_roots = dk_solve(eq_template, guesses, args.tol)
+
+        print("\nFinal Solved Roots:")
+        for i, root in enumerate(final_roots):
+            print(f"Root {i+1}: {root}")
+
+    except Exception as e:
+        print(f"\nSolver failed: {e}")
+        sys.exit(1)
+
 if __name__ == "__main__":
-    # Inherit HCTOL from the environment to dynamically scale the search loop
-#    hctol = int(os.environ.get('HCTOL', 25))
-
-#    final_x = bisect_solve('{x} / 1000', '0', '-0.17', '0.1', hctol)
-#    print(f"\nFinal Result: {final_x}")
-
-#    final_x = bisect_solve('cos {x}', '0.9', '0.4', '0.5', hctol)
-#    print(f"\nFinal Result: {final_x}")
-
-#    final_x = bisect_solve('cos {x}', '0.9', '0.5', '0.4', hctol)
-#    print(f"\nFinal Result: {final_x}")
-
-#    final_x = bisect_solve('{x} ^ 10', '10', '1', '10', hctol)
-#    print(f"\nFinal Result: {final_x}")
-
-    r'''
-        Calling the Newton SolverInstead of passing a low and high bracket, you pass the equation, its derivative, the target, and a single initial guess:Natural Log (Solving $\ln(x) = 1$): The derivative of $\ln(x)$ is $1/x$.newton_solve('ln {x}', '1 / {x}', '1', '2.5', hctol)Cosine (Solving $\cos(x) = 0.9$): The derivative of $\cos(x)$ is $-\sin(x)$.(Note: you'll need to multiply by -1 depending on how your hugecalc syntax parses negatives)newton_solve('cos {x}', '-1 * sin {x}', '0.9', '0.45', hctol)
-    '''
-
-#    final_x = newton_solve('cos {x}', 'sin {x} | * -1', '0.9', '0.45', hctol)
-#    print(f"\nFinal Result: {final_x}")
-
-#    final_x = newton_solve('{x} ^ 10', '{x} ^ 10 | * 10', '10', '1', hctol)
-#    print(f"\nFinal Result: {final_x}")
-
-
-    # --- END-TO-END POLYNOMIAL TEST ---
-    test_equation = "x^2 - x - 6 = 0"
-    test_equation = "x^2 + 1 = 0"
-    print(f"\n--- Testing Polynomial Solver ---")
-    print(f"Input: {test_equation}")
-
-    # 1. Parse and balance
-    merged_dict, var_name = parse_polynomial(test_equation)
-    dense_arr = build_dense_array(merged_dict)
-    print(f"Dense Array: {dense_arr}")
-
-    # 2. Build Horner's template
-    eq_template = build_equation_template(dense_arr)
-    print(f"Pipe Template: {eq_template}")
-
-    # 3. Generate starting complex points
-    guesses = generate_dk_guesses(dense_arr)
-    print(f"Initial Guesses: {guesses}")
-
-    # 4. Fire the Durand-Kerner engine
-    hctol = int(os.environ.get('HCTOL', 5))
-    final_roots = dk_solve(eq_template, guesses, hctol)
-
-    print("\nFinal Solved Roots:")
-    for i, root in enumerate(final_roots):
-        print(f"Root {i+1}: {root}")
+    main()
